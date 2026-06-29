@@ -1,11 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Inventario PYME PRO</title>
+  <title>Gestor Dinámico Universal</title>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Agregando SheetJS para procesar Excel localmente -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <!-- Agregando ChartJS para graficar estadisticas locales -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root {
       --primary: #6366f1;
@@ -14,15 +19,19 @@
       --success: #10b981;
       --danger: #ef4444;
       --dark: #0f172a;
-      --glass-bg: rgba(255, 255, 255, 0.7);
+      --glass-bg: rgba(255, 255, 255, 0.75);
       --glass-border: rgba(255, 255, 255, 0.4);
-      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
       --text: #334155;
       --text-muted: #64748b;
     }
-    
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
       font-family: 'Outfit', sans-serif;
       color: var(--text);
@@ -32,31 +41,48 @@
       overflow-x: hidden;
     }
 
-    /* Animated background blobs */
     .blob {
       position: absolute;
       filter: blur(80px);
       z-index: -1;
-      opacity: 0.6;
+      opacity: 0.5;
       border-radius: 50%;
       animation: float 10s infinite ease-in-out alternate;
     }
-    .blob-1 { top: -100px; left: -100px; width: 400px; height: 400px; background: rgba(99, 102, 241, 0.5); animation-delay: 0s; }
-    .blob-2 { bottom: -100px; right: -100px; width: 500px; height: 500px; background: rgba(236, 72, 153, 0.4); animation-delay: -5s; }
-    .blob-3 { top: 40%; left: 30%; width: 300px; height: 300px; background: rgba(16, 185, 129, 0.4); animation-delay: -2s; }
+
+    .blob-1 {
+      top: -100px;
+      left: -100px;
+      width: 400px;
+      height: 400px;
+      background: rgba(99, 102, 241, 0.5);
+    }
+
+    .blob-2 {
+      bottom: -100px;
+      right: -100px;
+      width: 500px;
+      height: 500px;
+      background: rgba(236, 72, 153, 0.4);
+      animation-delay: -5s;
+    }
 
     @keyframes float {
-      0% { transform: translate(0, 0) scale(1); }
-      100% { transform: translate(30px, 50px) scale(1.1); }
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+
+      100% {
+        transform: translate(30px, 50px) scale(1.1);
+      }
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1300px;
       margin: 0 auto;
       padding: 2rem;
     }
 
-    /* Glassmorphism Classes */
     .glass {
       background: var(--glass-bg);
       backdrop-filter: blur(12px);
@@ -66,71 +92,151 @@
       box-shadow: var(--glass-shadow);
       transition: all 0.3s ease;
     }
-    
-    .glass:hover {
-      box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.2);
+
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 20px 30px;
     }
 
-    /* Auth Screen */
-    #auth-screen {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .logo-icon {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 14px;
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 100;
-      background: inherit;
+      color: white;
     }
-    .auth-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 40px;
-      text-align: center;
+
+    .brand h1 {
+      font-size: 24px;
+      font-weight: 700;
     }
-    .auth-card h2 {
-      margin-bottom: 8px;
-      font-size: 28px;
-      background: linear-gradient(to right, var(--primary), var(--secondary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .auth-card p {
-      color: var(--text-muted);
-      margin-bottom: 30px;
-      font-size: 14px;
-    }
-    
-    .input-group {
-      margin-bottom: 20px;
-      text-align: left;
-    }
-    .input-group label {
-      display: block;
-      margin-bottom: 6px;
+
+    .brand p {
       font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
+      color: var(--text-muted);
     }
+
+    /* Stats Panel */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      border-left: 4px solid var(--primary);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    /* Tabs */
+    .tabs-container {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    .tab-btn {
+      padding: 12px 25px;
+      border: 1px solid transparent;
+      background: rgba(255, 255, 255, 0.4);
+      font-size: 14px;
+      font-family: inherit;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.3s;
+      white-space: nowrap;
+      text-transform: capitalize;
+    }
+
+    .tab-btn.active {
+      background: white;
+      color: var(--primary);
+      border-color: var(--primary);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.1);
+    }
+
+    /* Dynamic Form */
+    .add-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.3);
+      border-bottom: 1px solid var(--glass-border);
+      align-items: flex-end;
+    }
+
+    .input-wrapper {
+      display: flex;
+      flex-direction: column;
+      min-width: 150px;
+      flex: 1;
+    }
+
+    .input-wrapper label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      color: var(--text-muted);
+    }
+
     .input-glass {
       width: 100%;
       padding: 12px 16px;
       border: 1px solid rgba(255, 255, 255, 0.8);
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.5);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.6);
       font-family: inherit;
       font-size: 14px;
       color: var(--dark);
       transition: all 0.3s ease;
       outline: none;
     }
+
     .input-glass:focus {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 1);
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
     }
-    
+
+    /* Buttons */
     .btn {
-      width: 100%;
       padding: 12px 20px;
       border: none;
       border-radius: 12px;
@@ -144,135 +250,63 @@
       justify-content: center;
       gap: 8px;
     }
+
     .btn-primary {
       background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: white;
       box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
     }
+
     .btn-primary:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
     }
+
     .btn-outline {
-      background: transparent;
+      background: white;
       border: 1px solid var(--primary);
       color: var(--primary);
     }
+
     .btn-outline:hover {
       background: rgba(99, 102, 241, 0.1);
     }
-    .btn-sm {
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--danger);
+      color: var(--danger);
       padding: 6px 12px;
-      font-size: 13px;
-      border-radius: 8px;
-      width: auto;
+      font-size: 12px;
     }
 
-    /* Main App Dashboard */
-    #app-dashboard {
-      display: none;
-    }
-    
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding: 20px 30px;
-    }
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-    }
-    .logo-icon {
-      width: 48px; height: 48px;
-      background: linear-gradient(135deg, var(--primary), var(--secondary));
-      border-radius: 14px;
-      display: flex; align-items: center; justify-content: center;
+    .btn-danger:hover {
+      background: var(--danger);
       color: white;
     }
-    .brand h1 { font-size: 22px; font-weight: 700; }
-    .brand p { font-size: 13px; color: var(--text-muted); }
 
-    /* Stats Row */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-bottom: 2rem;
-    }
-    .stat-card {
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .stat-label {
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-    .stat-value {
-      font-size: 32px;
-      font-weight: 700;
-      color: var(--dark);
-    }
-
-    /* Navigation */
-    .tabs {
-      display: flex;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .tab-btn {
-      padding: 10px 20px;
-      border: none;
-      background: transparent;
-      font-size: 15px;
-      font-family: inherit;
-      font-weight: 600;
-      color: var(--text-muted);
-      cursor: pointer;
-      border-radius: 12px;
-      transition: all 0.3s;
-    }
-    .tab-btn.active {
-      background: rgba(255, 255, 255, 0.8);
-      color: var(--primary);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    }
-
-    .panel { display: none; animation: fadeIn 0.4s ease; }
-    .panel.active { display: block; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Table Styles */
+    /* Table */
     .table-card {
       padding: 0;
-      overflow: hidden;
+      overflow-x: auto;
     }
+
     .table-toolbar {
       padding: 20px;
       border-bottom: 1px solid var(--glass-border);
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 15px;
+      flex-wrap: wrap;
     }
-    .search-box {
-      flex: 1;
-      max-width: 400px;
-    }
+
     table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 600px;
     }
+
     th {
       text-align: left;
       padding: 15px 20px;
@@ -282,65 +316,88 @@
       color: var(--text-muted);
       background: rgba(255, 255, 255, 0.4);
       border-bottom: 1px solid var(--glass-border);
+      position: sticky;
+      top: 0;
     }
+
     td {
       padding: 15px 20px;
-      border-bottom: 1px solid rgba(255,255,255,0.2);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
       font-size: 14px;
       vertical-align: middle;
     }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.6); }
-    
-    .badge-stock-ok { background: rgba(16, 185, 129, 0.2); color: var(--success); padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-stock-low { background: rgba(239, 68, 68, 0.2); color: var(--danger); padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
 
-    .action-btns { display: flex; gap: 8px; }
-
-    /* Add Row */
-    .add-row {
-      display: grid;
-      grid-template-columns: 2fr 3fr 1.5fr 1.5fr auto;
-      gap: 15px;
-      padding: 20px;
-      background: rgba(255,255,255,0.3);
-      border-bottom: 1px solid var(--glass-border);
-      align-items: flex-end;
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.6);
     }
 
-    /* Import Dropzone */
-    .drop-zone {
-      border: 2px dashed rgba(99, 102, 241, 0.5);
-      border-radius: 20px;
-      padding: 60px 40px;
+    /* Excel Dropzone */
+    .dropZone {
+      border: 2px dashed var(--primary);
+      border-radius: 12px;
+      padding: 15px 20px;
       text-align: center;
       cursor: pointer;
+      background: rgba(99, 102, 241, 0.05);
+      flex: 1;
+      min-width: 200px;
       transition: all 0.3s;
-      background: rgba(255, 255, 255, 0.4);
-    }
-    .drop-zone:hover, .drop-zone.drag-over {
-      background: rgba(99, 102, 241, 0.1);
-      border-color: var(--primary);
-    }
-    .drop-zone svg {
-      width: 64px; height: 64px;
-      color: var(--primary);
-      margin-bottom: 15px;
-      opacity: 0.8;
     }
 
-    /* Forecast Layout */
-    .forecast-grid {
+    .dropZone:hover,
+    .dropZone.dragover {
+      background: rgba(99, 102, 241, 0.15);
+    }
+
+    .dropZone p {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      margin: 0;
+    }
+
+    /* Modal Mapeo Excel */
+    #mapping-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      max-width: 600px;
+      width: 95%;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .map-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: center;
+      padding: 10px;
+      background: #f8fafc;
+      border-radius: 8px;
     }
-    .chart-container {
-      padding: 20px;
-      height: 400px;
-    }
-    .forecast-list {
-      padding: 20px;
+
+    .map-row select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
     }
 
     /* Alerts */
@@ -351,450 +408,718 @@
       padding: 15px 25px;
       border-radius: 12px;
       font-weight: 500;
-      transform: translateY(100px);
+      transform: translateY(150px);
       opacity: 0;
       transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-      z-index: 1000;
+      z-index: 2000;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      color: white;
     }
+
     #global-alert.show {
       transform: translateY(0);
       opacity: 1;
     }
-    .alert-success { background: var(--success); color: white; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-    .alert-error { background: var(--danger); color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
 
-    .loader {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      animation: spin 1s linear infinite;
+    .screen-center {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      flex-direction: column;
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
     }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
   </style>
 </head>
+
 <body>
 
-  <!-- Background Blobs -->
   <div class="blob blob-1"></div>
   <div class="blob blob-2"></div>
-  <div class="blob blob-3"></div>
-
-  <!-- Global Alert -->
   <div id="global-alert">Mensaje</div>
 
-  <!-- Auth Screen -->
-  <div id="auth-screen">
-    <div class="glass auth-card">
-      <h2>Iniciar Sesión</h2>
-      <p>Conéctate a la base de datos MySQL local para continuar</p>
-      
-      <div class="input-group">
-        <label>Host</label>
-        <input type="text" id="db-host" class="input-glass" value="localhost">
-      </div>
-      <div class="input-group">
-        <label>Usuario</label>
-        <input type="text" id="db-user" class="input-glass" value="root">
-      </div>
-      <div class="input-group">
-        <label>Contraseña</label>
-        <input type="password" id="db-pass" class="input-glass" placeholder="Tu contraseña">
-      </div>
-      <div class="input-group">
-        <label>Base de Datos</label>
-        <input type="text" id="db-name" class="input-glass" value="pyme_db">
-      </div>
-      
-      <button class="btn btn-primary" id="btn-login" onclick="conectarBD()">Conectar</button>
+  <!-- Pantalla de Error Base de Datos -->
+  <div id="error-screen" class="screen-center" style="display: none;">
+    <div class="glass" style="padding: 40px; text-align: center; max-width: 500px;">
+      <h2 style="font-size: 24px; color: var(--danger);">⚠️ Conexión Perdida</h2>
+      <p style="margin-top: 15px;">No pudimos comunicarnos con el servidor MySQL local.</p>
+      <p style="margin-top: 10px; font-size: 13px; color: var(--text-muted);">Asegúrate de que el Backend de Python y
+        MySQL estén activos.</p>
+      <button class="btn btn-primary" style="margin-top:20px;" onclick="window.location.reload()">Reintentar</button>
     </div>
   </div>
 
   <!-- Main App -->
-  <div id="app-dashboard" class="container">
-    
+  <div id="app-dashboard" class="container" style="display: none;">
+
     <div class="glass header">
       <div class="brand">
         <div class="logo-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-3a2 2 0 0 0-2-2 2 2 0 0 0-2 2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm-10-2a1 1 0 0 1 1-1 1 1 0 0 1 1 1v2h-2V5zm10 14H4V9h16v10z"/></svg>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 6h16M4 12h16M4 18h7" />
+          </svg>
         </div>
         <div>
-          <h1>Inventario PYME PRO</h1>
-          <p>Plataforma inteligente de gestión de inventarios y pronóstico</p>
-        </div>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="desconectarBD()">Cerrar Conexión</button>
-    </div>
-
-    <!-- Stats -->
-    <div class="stats-row">
-      <div class="glass stat-card">
-        <div class="stat-label">Total Productos</div>
-        <div class="stat-value" id="stat-total">0</div>
-      </div>
-      <div class="glass stat-card">
-        <div class="stat-label">Valor del Inventario</div>
-        <div class="stat-value" id="stat-valor">$0</div>
-      </div>
-      <div class="glass stat-card">
-        <div class="stat-label">Alertas de Stock</div>
-        <div class="stat-value" style="color:var(--danger)" id="stat-bajo">0</div>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('inventario')">Inventario</button>
-      <button class="tab-btn" onclick="switchTab('importar')">Importar Datos</button>
-      <button class="tab-btn" onclick="switchTab('pronostico')">Pronóstico de Ventas ✨</button>
-    </div>
-
-    <!-- Panel Inventario -->
-    <div id="panel-inventario" class="panel active">
-      <div class="glass table-card">
-        
-        <div class="add-row">
-          <div><label class="stat-label" style="font-size:10px">Código</label><input type="text" id="f-codigo" class="input-glass" placeholder="Ej: P001"></div>
-          <div><label class="stat-label" style="font-size:10px">Nombre</label><input type="text" id="f-nombre" class="input-glass" placeholder="Nombe producto"></div>
-          <div><label class="stat-label" style="font-size:10px">Precio $</label><input type="number" id="f-precio" class="input-glass" placeholder="0.00" step="0.01"></div>
-          <div><label class="stat-label" style="font-size:10px">Stock</label><input type="number" id="f-stock" class="input-glass" placeholder="0"></div>
-          <button class="btn btn-primary" onclick="agregarProducto()">Añadir</button>
-        </div>
-
-        <div class="table-toolbar">
-          <input type="text" id="busqueda" class="input-glass search-box" placeholder="Buscar productos..." oninput="buscarProductos()">
-          <button class="btn btn-outline btn-sm" onclick="exportarCSV()">Exportar a CSV</button>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th><th>Código</th><th>Producto</th><th>Precio</th><th>Stock</th><th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="tabla-body">
-            <tr><td colspan="6" style="text-align:center">Cargando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Panel Importar -->
-    <div id="panel-importar" class="panel">
-      <div class="glass" style="padding: 30px;">
-        <h2 style="margin-bottom: 20px;">Organizar y Normalizar Excel</h2>
-        <div class="drop-zone" id="drop-zone"
-             onclick="document.getElementById('file-input').click()"
-             ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event)">
-          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
-          <h3>Sube tu archivo Excel (.xlsx)</h3>
-          <p style="margin-top:10px; color:var(--text-muted)">El sistema validará, normalizará y quitará duplicados automáticamente antes de importar.</p>
-        </div>
-        <input type="file" id="file-input" style="display:none" accept=".xlsx,.xls" onchange="handleFile(event)">
-        
-        <div id="import-preview" style="display:none; margin-top:20px;">
-          <h4>Vista Previa de Importación</h4>
-          <p id="preview-info" style="font-size:14px; margin-bottom:10px; color:var(--text-muted)"></p>
-          <button class="btn btn-primary" onclick="confirmarImport()" id="btn-import-confirm">Subir a BD</button>
+          <h1>Gestor Universal</h1>
+          <p>Plataforma Inteligente y Dinámica de Bases de Datos</p>
         </div>
       </div>
     </div>
 
-    <!-- Panel Pronóstico -->
-    <div id="panel-pronostico" class="panel">
-      <div class="forecast-grid">
-        <div class="glass chart-container">
-          <h3 style="margin-bottom: 20px;">Potencial de Demanda</h3>
-          <canvas id="forecastChart"></canvas>
-        </div>
-        <div class="glass forecast-list">
-          <h3 style="margin-bottom: 20px;">Top 10 Productos Estrella</h3>
-          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 15px;">
-            El algoritmo estima la probabilidad de venta utilizando el historial de inventario y tendencias rotativas.
-          </p>
-          <ul id="top-predictions" style="list-style:none;">
-            <!-- Rendered via JS -->
-          </ul>
+    <!-- Menú Dinámico de Tablas -->
+    <div class="tabs-container" id="table-tabs">
+      <!-- Se inyecta vía JS -->
+      <span style="color:var(--text-muted); font-size:14px;">Buscando tablas en MySQL...</span>
+    </div>
+
+    <!-- Sugerencias / Métricas con IA básica -->
+    <div class="stats-row" id="metrics-panel">
+      <!-- Se inyecta vía JS -->
+    </div>
+
+    <!-- Panel de Tabla Específica -->
+    <div class="glass table-card">
+
+      <!-- Formulario Auto-generado para Insertar -->
+      <div class="add-row" id="dynamic-form">
+        <!-- Se inyecta vía JS -->
+      </div>
+
+      <div class="table-toolbar">
+        <h3 id="current-table-title" style="text-transform: capitalize;">Tabla</h3>
+
+        <div class="dropZone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+          ondragover="event.preventDefault(); this.classList.add('dragover')"
+          ondragleave="this.classList.remove('dragover')" ondrop="handleDrop(event)">
+          <p>📥 Arrastra aquí un Excel para importar datos</p>
+          <input type="file" id="file-input" style="display:none" accept=".xlsx,.xls,.csv"
+            onchange="handleFileSelect(event)">
         </div>
       </div>
+
+      <table id="data-table">
+        <thead id="dynamic-thead">
+          <!-- JS -->
+        </thead>
+        <tbody id="dynamic-tbody">
+          <!-- JS -->
+        </tbody>
+      </table>
     </div>
 
   </div> <!-- End App Dashboard -->
 
+  <!-- Excel Mapping Modal -->
+  <div id="mapping-modal">
+    <div class="modal-content">
+      <h2 style="margin-bottom: 10px;">Vincular Columnas (Mapeo Inteligente)</h2>
+      <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Hemos detectado estas cabeceras en tu
+        archivo Excel. Por favor, indícale al sistema a qué campo de la base de datos MySQL pertenece cada una.</p>
+
+      <div
+        style="display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 10px; font-weight: bold; font-size: 12px; color: var(--dark);">
+        <div>Columna en tu Excel</div>
+        <div>Guardar en MySQL como...</div>
+      </div>
+
+      <div id="mapping-container" style="margin-bottom: 25px;">
+        <!-- JS -->
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 10px;">
+        <button class="btn btn-outline" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-import-mapped" onclick="procesarMapImportacion()">Procesar e
+          Importar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API = "http://localhost:5000/api";
-    let chartInstance = null;
+    let DB_SCHEMA = {}; // Estructura de toda la BD
+    let DB_DATA_CACHE = {}; // Caché de la tabla activa
+    let activeTable = null;
+    let excelRawData = []; // Buffer para el Excel subido
 
-    // Verificar sesión al cargar
+    // ─── 1. INICIALIZACIÓN (Descubrimiento del Esquema) ───
     window.onload = async () => {
       try {
-        const res = await fetch(`${API}/status`);
-        if (res.ok) {
-          mostrarApp();
+        const res = await fetch(`${API}/schema`);
+        if (!res.ok) throw new Error("Backend indisponible");
+
+        DB_SCHEMA = await res.json();
+        const tablas = Object.keys(DB_SCHEMA);
+
+        if (tablas.length === 0) {
+          mostrarMensaje("Advertencia: No se encontraron tablas en la Base de Datos", "error");
+        } else {
+          renderTableTabs(tablas);
+          activeTable = tablas[0];
+          cargarDatosTablaActiva();
         }
+
+        document.getElementById("error-screen").style.display = "none";
+        document.getElementById("app-dashboard").style.display = "block";
       } catch (e) {
-        console.log("No conectado");
+        document.getElementById("error-screen").style.display = "flex";
       }
     };
-
-    // ── Autenticación ─────────────────────────────
-    async function conectarBD() {
-      const btn = document.getElementById("btn-login");
-      const originHtml = btn.innerHTML;
-      btn.innerHTML = `<div class="loader"></div>`;
-      
-      const payload = {
-        host: document.getElementById("db-host").value,
-        user: document.getElementById("db-user").value,
-        password: document.getElementById("db-pass").value,
-        database: document.getElementById("db-name").value
-      };
-
-      try {
-        const res = await fetch(`${API}/connect`, {
-          method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        
-        if (res.ok) {
-          mostrarMensaje("Conexión exitosa a MySQL", "success");
-          mostrarApp();
-        } else {
-          mostrarMensaje(data.error || "Error de conexión", "error");
-          btn.innerHTML = originHtml;
-        }
-      } catch (e) {
-        mostrarMensaje("No se pudo contactar al servidor. Asegura que el backend esté en marcha.", "error");
-        btn.innerHTML = originHtml;
-      }
-    }
-
-    async function desconectarBD() {
-      await fetch(`${API}/logout`, {method:"POST"});
-      document.getElementById("app-dashboard").style.display = "none";
-      document.getElementById("auth-screen").style.display = "flex";
-      document.getElementById("btn-login").innerHTML = "Conectar";
-    }
-
-    function mostrarApp() {
-      document.getElementById("auth-screen").style.display = "none";
-      document.getElementById("app-dashboard").style.display = "block";
-      cargarInventario();
-    }
-
-    // ── Navegación y UI ───────────────────────────
-    function switchTab(tabId) {
-      document.querySelectorAll(".tab-btn").forEach(t => t.classList.remove("active"));
-      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
-      
-      event.target.classList.add("active");
-      document.getElementById(`panel-${tabId}`).classList.add("active");
-
-      if (tabId === "inventario") cargarInventario();
-      if (tabId === "pronostico") cargarPronostico();
-    }
 
     function mostrarMensaje(msg, tipo = "success") {
       const alertBox = document.getElementById("global-alert");
       alertBox.textContent = msg;
-      alertBox.className = `alert-${tipo} show`;
+      alertBox.style.backgroundColor = tipo === "error" ? "var(--danger)" : "var(--success)";
+      alertBox.className = `show`;
       setTimeout(() => alertBox.classList.remove("show"), 4000);
     }
 
-    // ── Inventario Logic ─────────────────────────
-    async function cargarInventario(q="") {
-      const url = q ? `${API}/productos?q=${encodeURIComponent(q)}` : `${API}/productos`;
+    // ─── 2. GENERADOR DINÁMICO DE INTERFAZ ───
+    function renderTableTabs(tablas) {
+      const container = document.getElementById("table-tabs");
+      container.innerHTML = tablas.map(t =>
+        `<button class="tab-btn" id="tab-${t}" onclick="cambiarTabla('${t}')">${t}</button>`
+      ).join("");
+    }
+
+    function cambiarTabla(nombreTabla) {
+      activeTable = nombreTabla;
+      cargarDatosTablaActiva();
+    }
+
+    async function cargarDatosTablaActiva() {
+      // Activar color de la pestaña
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.getElementById(`tab-${activeTable}`).classList.add("active");
+      document.getElementById("current-table-title").textContent = `Registros de: ${activeTable}`;
+
+      // Configurar Formulario Dinámico
+      generarFormularioInsercion();
+
       try {
-        const [resProd, resStats] = await Promise.all([
-          fetch(url), fetch(`${API}/estadisticas`)
-        ]);
-        
-        if (!resProd.ok) {
-          desconectarBD(); return;
-        }
+        const tbody = document.getElementById("dynamic-tbody");
+        tbody.innerHTML = `<tr><td colspan="100%" style="text-align:center">Cargando datos...</td></tr>`;
 
-        const dataProd = await resProd.json();
-        const dataStats = await resStats.json();
+        const res = await fetch(`${API}/datos/${activeTable}`);
+        const datos = await res.json();
+        DB_DATA_CACHE[activeTable] = datos;
 
-        // Render Stats
-        document.getElementById("stat-total").textContent = dataStats.total || 0;
-        document.getElementById("stat-valor").textContent = "$" + (dataStats.valor_total || 0).toLocaleString();
-        document.getElementById("stat-bajo").textContent = dataStats.stock_bajo || 0;
+        renderizarDataGrid(datos);
+        calcularInteligencia(datos);
 
-        // Render Table
-        const tbody = document.getElementById("tabla-body");
-        if (dataProd.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 40px; color: var(--text-muted);">No hay productos en inventario.</td></tr>`;
-          return;
-        }
-
-        tbody.innerHTML = dataProd.map(p => `
-          <tr>
-            <td>#${p.id}</td>
-            <td><strong>${p.codigo}</strong></td>
-            <td>${p.nombre}</td>
-            <td>$${parseFloat(p.precio).toFixed(2)}</td>
-            <td><span class="${p.stock < 5 ? 'badge-stock-low' : 'badge-stock-ok'}">${p.stock} uds</span></td>
-            <td>
-              <div class="action-btns">
-                <button class="btn btn-outline btn-sm" onclick="eliminarProducto(${p.id})">Borrar</button>
-              </div>
-            </td>
-          </tr>
-        `).join("");
-
-      } catch (err) {
-        mostrarMensaje("Error al cargar datos", "error");
+      } catch (e) {
+        mostrarMensaje("Error leyendo tabla " + activeTable, "error");
       }
     }
 
-    function buscarProductos() {
-      cargarInventario(document.getElementById("busqueda").value);
+    function analizarTipoDato(tipoSQL) {
+      tipoSQL = tipoSQL.toLowerCase();
+      if (tipoSQL.includes("int") || tipoSQL.includes("float") || tipoSQL.includes("decimal") || tipoSQL.includes("double")) return "number";
+      if (tipoSQL.includes("date") || tipoSQL.includes("time")) return "date";
+      return "text";
     }
 
-    async function agregarProducto() {
-      const payload = {
-        codigo: document.getElementById("f-codigo").value,
-        nombre: document.getElementById("f-nombre").value,
-        precio: document.getElementById("f-precio").value,
-        stock: document.getElementById("f-stock").value
-      };
-      
-      const res = await fetch(`${API}/productos`, {
-        method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify(payload)
-      });
-      
-      const data = await res.json();
-      if(res.ok) {
-        mostrarMensaje(data.mensaje);
-        ["f-codigo","f-nombre","f-precio","f-stock"].forEach(id => document.getElementById(id).value = "");
-        cargarInventario();
-      } else {
-        mostrarMensaje(data.error, "error");
-      }
-    }
+    function generarFormularioInsercion() {
+      const columnas = DB_SCHEMA[activeTable];
+      const formContainer = document.getElementById("dynamic-form");
 
-    async function eliminarProducto(id) {
-      if(!confirm("¿Seguro que deseas eliminar el producto?")) return;
-      const res = await fetch(`${API}/productos/${id}`, { method: "DELETE" });
-      if(res.ok) {
-         mostrarMensaje("Producto eliminado");
-         cargarInventario();
-      }
-    }
+      let formsHtml = "";
+      for (const col of columnas) {
+        // Ignorar Llaves Primarias y Campos AutoIncrementales visualmente al añadir
+        if (col.Extra.includes("auto_increment") || (col.Key === "PRI" && col.Type.includes("int"))) continue;
 
-    // ── Exportar CSV ────────────────────────────────
-    async function exportarCSV() {
-      const res  = await fetch(`${API}/productos`);
-      const data = await res.json();
-      if (!data.length) {
-         mostrarMensaje("No hay datos para exportar", "error");
-         return;
-      }
-      const rows = [["ID","Codigo","Nombre","Precio","Stock"], ...data.map(p => [p.id, p.codigo, p.nombre, p.precio, p.stock])];
-      const csv  = rows.map(r => r.join(",")).join("\n");
-      const a    = document.createElement("a");
-      a.href     = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-      a.download = "inventario_pyme.csv";
-      a.click();
-    }
+        const typeHtml = analizarTipoDato(col.Type);
+        const placeholder = typeHtml === "number" ? "0" : (typeHtml === 'date' ? '' : 'Escribe...');
+        const step = col.Type.includes("decimal") || col.Type.includes("float") ? 'step="0.01"' : '';
 
-    // ── Importar / Normalizar Logic ───────────────
-    let fileToUpload = null;
-    function dragOver(e)  { e.preventDefault(); document.getElementById("drop-zone").classList.add("drag-over"); }
-    function dragLeave(e) { document.getElementById("drop-zone").classList.remove("drag-over"); }
-    function dragDrop(e)  { 
-      e.preventDefault(); 
-      dragLeave(); 
-      if (e.dataTransfer.files[0]) handleFileObj(e.dataTransfer.files[0]); 
-    }
-    function handleFile(e){ 
-      if (e.target.files[0]) handleFileObj(e.target.files[0]); 
-    }
-
-    function handleFileObj(file) {
-      fileToUpload = file;
-      document.getElementById("import-preview").style.display = "block";
-      document.getElementById("preview-info").textContent = `Archivo cargado: ${file.name}. Listo para analizar y sincronizar con la base de datos MySQL.`;
-    }
-
-    async function confirmarImport() {
-      if(!fileToUpload) return;
-      
-      const btn = document.getElementById("btn-import-confirm");
-      btn.innerHTML = '<div class="loader"></div>';
-      
-      const fd = new FormData();
-      fd.append("archivo", fileToUpload);
-
-      const res = await fetch(`${API}/importar`, { method: "POST", body: fd });
-      const data = await res.json();
-
-      btn.innerHTML = 'Subir a BD';
-      if(res.ok) {
-        mostrarMensaje(data.mensaje);
-        fileToUpload = null;
-        document.getElementById("import-preview").style.display = "none";
-        document.getElementById("file-input").value = "";
-      } else {
-        mostrarMensaje(data.error, "error");
-      }
-    }
-
-    // ── Pronóstico Logic ──────────────────────────
-    async function cargarPronostico() {
-      const res = await fetch(`${API}/pronostico`);
-      if(!res.ok) return;
-      const data = await res.json();
-      
-      // Update List
-      const ul = document.getElementById("top-predictions");
-      ul.innerHTML = data.recomendaciones.map((p, index) => `
-        <li style="padding: 12px; border-bottom: 1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center;">
-          <div><strong style="margin-right:10px; color:var(--primary)">#${index+1}</strong> ${p.nombre}</div>
-          <div style="text-align:right">
-            <span style="font-size:12px; color:var(--text-muted); display:block;">Puntaje</span>
-            <strong>${p.demanda_estimada}</strong>
+        formsHtml += `
+          <div class="input-wrapper">
+            <label>${col.Field.replace(/_/g, ' ')}</label>
+            <input type="${typeHtml}" id="in-${col.Field}" class="input-glass" placeholder="${placeholder}" ${step}>
           </div>
-        </li>
-      `).join("");
+        `;
+      }
+      
+      formsHtml += `
+        <div style="display:flex; gap:10px;">
+           <button class="btn btn-primary" id="btn-submit-dynamic" onclick="procesarRegistroDinamico()" style="margin-bottom:2px">Añadir</button>
+           <button class="btn btn-outline" id="btn-cancel-edit" onclick="cancelarEdicion()" style="margin-bottom:2px; display:none;">Cancelar</button>
+        </div>
+      `;
+      formContainer.innerHTML = formsHtml;
+    }
 
-      // Update Chart
-      const labels = data.recomendaciones.map(p => p.nombre.substring(0, 15) + "...");
-      const scores = data.recomendaciones.map(p => p.demanda_estimada);
+    function renderizarDataGrid(datos) {
+      const columnas = DB_SCHEMA[activeTable];
+
+      // Crear THEAD
+      const thead = document.getElementById("dynamic-thead");
+      let theadHtml = "<tr>";
+      columnas.forEach(c => theadHtml += `<th>${c.Field}</th>`);
+      theadHtml += `<th>Acción</th></tr>`;
+      thead.innerHTML = theadHtml;
+
+      // Crear TBODY
+      const tbody = document.getElementById("dynamic-tbody");
+      if (datos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${columnas.length + 1}" style="text-align:center; padding: 30px;">Tabla Vacía. Sube un Excel o añade manualmente.</td></tr>`;
+        return;
+      }
+
+      // Buscar Llave Primaria Inteligente (Para el botón de borrar)
+      let pkField = columnas.find(c => c.Key === "PRI")?.Field || columnas[0].Field;
+
+      let tbodyHtml = "";
+      datos.forEach(fila => {
+        tbodyHtml += "<tr>";
+        columnas.forEach(c => {
+          let val = fila[c.Field];
+          if (val === null || val === undefined) val = "-";
+          tbodyHtml += `<td>${val}</td>`;
+        });
+        tbodyHtml += `
+          <td style="display:flex; gap:5px;">
+            <button class="btn" style="background:var(--primary); color:white; padding:6px 12px; font-size:12px;" onclick="prepararEdicion('${pkField}', '${fila[pkField]}')">✏️</button>
+            <button class="btn btn-danger" onclick="eliminarRegistroDinamico('${pkField}', '${fila[pkField]}')">❌</button>
+          </td></tr>`;
+      });
+      tbody.innerHTML = tbodyHtml;
+    }
+
+    // ─── 3. LOGICA C.R.U.D UNIVERSAL ───
+    let editPkCol = null;
+    let editPkVal = null;
+
+    function prepararEdicion(pkCol, pkVal) {
+      editPkCol = pkCol;
+      editPkVal = pkVal;
       
-      if(chartInstance) chartInstance.destroy();
-      
-      const ctx = document.getElementById('forecastChart').getContext('2d');
-      chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'Demanda Estimada',
-            data: scores,
-            backgroundColor: 'rgba(99, 102, 241, 0.6)',
-            borderColor: 'rgba(99, 102, 241, 1)',
-            borderWidth: 1,
-            borderRadius: 5
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
-          scales: {
-            y: { beginAtZero: true }
+      const fila = DB_DATA_CACHE[activeTable].find(r => String(r[pkCol]) === String(pkVal));
+      if(!fila) return;
+
+      const columnas = DB_SCHEMA[activeTable];
+      for (const col of columnas) {
+        if (col.Extra.includes("auto_increment") || (col.Key === "PRI" && col.Type.includes("int"))) continue;
+        const input = document.getElementById(`in-${col.Field}`);
+        if(input) input.value = fila[col.Field] !== null ? fila[col.Field] : "";
+      }
+
+      document.getElementById("btn-submit-dynamic").textContent = "Guardar Cambios";
+      document.getElementById("btn-cancel-edit").style.display = "inline-flex";
+    }
+
+    function cancelarEdicion() {
+      editPkCol = null; editPkVal = null;
+      document.getElementById("btn-submit-dynamic").textContent = "Añadir";
+      document.getElementById("btn-cancel-edit").style.display = "none";
+      generarFormularioInsercion(); // Limpia campos
+    }
+
+    async function procesarRegistroDinamico() {
+      const columnas = DB_SCHEMA[activeTable];
+      const payload = {};
+
+      // Recoger solo las columnas que pusimos en el formulario visual
+      for (const col of columnas) {
+        if (col.Extra.includes("auto_increment") || (col.Key === "PRI" && col.Type.includes("int"))) continue;
+        const input = document.getElementById(`in-${col.Field}`);
+        if (input) {
+          let val = input.value;
+          // Si es un placeholder numérico vacío
+          if (val === "" && analizarTipoDato(col.Type) === "number") {
+            if (col.Null === 'NO' && col.Default === null) val = 0; // fallback safe
+          }
+          payload[col.Field] = val;
+        }
+      }
+
+      let res;
+      if (editPkVal !== null) {
+          // UPDATE (PUT)
+          res = await fetch(`${API}/datos/${activeTable}/${editPkCol}/${editPkVal}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+      } else {
+          // CREATE (POST)
+          res = await fetch(`${API}/datos/${activeTable}`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+      }
+
+      const data = await res.json();
+      if (res.ok) {
+        mostrarMensaje(editPkVal ? "Registro actualizado exitosamente" : "Registro creado exitosamente");
+        cancelarEdicion();
+        cargarDatosTablaActiva();
+      } else mostrarMensaje(data.error, "error");
+    }
+
+    async function eliminarRegistroDinamico(pk_col, pk_val) {
+      if (!confirm("¿Borrar permanentemente este registro?")) return;
+      const res = await fetch(`${API}/datos/${activeTable}/${pk_col}/${pk_val}`, { method: "DELETE" });
+      if (res.ok) {
+        cargarDatosTablaActiva();
+        mostrarMensaje("Registro Eliminado");
+      }
+    }
+
+    // ─── 4. ALGORITMO DE SUGERENCIAS / MÉTRICAS (Con Inteligencia Contextual) ───
+    function analizarContexto(columnas) {
+      let textoColumnas = columnas.map(c => c.Field.toLowerCase()).join(" ");
+      if (textoColumnas.includes("precio") || textoColumnas.includes("stock") || textoColumnas.includes("producto") || textoColumnas.includes("inventario")) return "INVENTARIO";
+      if (textoColumnas.includes("telefono") || textoColumnas.includes("correo") || textoColumnas.includes("contacto") || textoColumnas.includes("direccion") || textoColumnas.includes("libreta")) return "AGENDA";
+      if (textoColumnas.includes("fecha") && (textoColumnas.includes("monto") || textoColumnas.includes("total") || textoColumnas.includes("pago"))) return "FINANZAS";
+      return "GENERICO";
+    }
+
+    function calcularInteligencia(datos) {
+      const columnas = DB_SCHEMA[activeTable];
+      const panel = document.getElementById("metrics-panel");
+
+      if (datos.length === 0) { panel.innerHTML = ""; return; }
+
+      const contexto = analizarContexto(columnas);
+
+      let cardsHtml = `
+        <div class="glass stat-card">
+          <div class="stat-label">Contexto Analizado: ${contexto}</div>
+          <div class="stat-value" style="font-size: 20px; color: var(--primary);">${datos.length} Registros Totales</div>
+        </div>
+      `;
+
+      // 1. Estadísticas Contextuales
+      if (contexto === "INVENTARIO") {
+        let valorTotal = 0;
+        let colPrecio = columnas.find(c => c.Field.toLowerCase().includes("precio") || c.Field.toLowerCase().includes("costo"))?.Field;
+        let colStock = columnas.find(c => c.Field.toLowerCase().includes("stock") || c.Field.toLowerCase().includes("cantidad"))?.Field;
+        let colNombre = columnas.find(c => c.Field.toLowerCase().includes("nombre") || c.Field.toLowerCase().includes("producto") || c.Field.toLowerCase().includes("descripcion"))?.Field || columnas[1]?.Field;
+
+        let masStock = { nombre: "-", cant: -1 };
+        let menosStock = { nombre: "-", cant: Infinity };
+        let masDemanda = { nombre: "-", score: -1 };
+
+        let chartNombres = [];
+        let chartCantidades = [];
+
+        datos.forEach(row => {
+          let pr = colPrecio ? parseFloat(row[colPrecio]) || 0 : 0;
+          let st = colStock ? parseInt(row[colStock]) || 0 : 0;
+          let nom = colNombre ? row[colNombre] : "Desconocido";
+          
+          valorTotal += (pr * st);
+          
+          if(st > masStock.cant) { masStock = { nombre: nom, cant: st }; }
+          if(st < menosStock.cant) { menosStock = { nombre: nom, cant: st }; }
+          
+          // Heurística de Riesgo cruzando Precio x Escasez
+          let scoreDemanda = pr > 0 ? (100 / (st + 1)) * pr : 0;
+          if(scoreDemanda > masDemanda.score) { masDemanda = { nombre: nom, score: scoreDemanda }; }
+
+          // Limitar chart a max 8 para no saturar pastel
+          if(chartNombres.length < 8) {
+              chartNombres.push(nom);
+              chartCantidades.push(st);
+          }
+        });
+
+        if (menosStock.cant === Infinity) menosStock.cant = 0;
+
+        cardsHtml += `
+            <div class="glass stat-card" style="border-left-color: var(--secondary);">
+              <div class="stat-label">💰 Valor Bruto Inmovilizado</div>
+              <div class="stat-value">$${valorTotal.toFixed(2)}</div>
+            </div>
+            
+            <div class="glass stat-card" style="grid-column: 1 / -1; display:flex; flex-wrap:wrap; gap: 20px; padding: 25px;">
+              <div style="flex:1; min-width:300px; max-width:400px; display:flex; flex-direction:column; align-items:center;">
+                  <h4 style="margin-bottom:15px; color:var(--text); text-transform:uppercase; font-size:13px; letter-spacing:1px; text-align:center;">Distribución Representativa</h4>
+                  <div style="width:100%; max-width:260px; position:relative;">
+                     <canvas id="stockChart"></canvas>
+                  </div>
+              </div>
+              
+              <div style="flex:1; min-width:300px; display:flex; flex-direction:column; justify-content:center; gap:15px;">
+                  <div style="padding:15px; background:rgba(16, 185, 129, 0.1); border-left:4px solid var(--success); border-radius:8px;">
+                      <div style="font-size:12px; font-weight:bold; color:var(--success); text-transform:uppercase;">🟢 Mayor Cantidad Acumulada</div>
+                      <div style="font-size:18px; color:var(--dark); margin-top:5px;">${masStock.nombre} <span style="font-size:14px; color:var(--text-muted)">(${masStock.cant} uds)</span></div>
+                  </div>
+                  
+                  <div style="padding:15px; background:rgba(239, 68, 68, 0.1); border-left:4px solid var(--danger); border-radius:8px;">
+                      <div style="font-size:12px; font-weight:bold; color:var(--danger); text-transform:uppercase;">🔴 ¡Se va a acabar pronto!</div>
+                      <div style="font-size:18px; color:var(--dark); margin-top:5px;">${menosStock.nombre} <span style="font-size:14px; color:var(--text-muted)">(${menosStock.cant} uds)</span></div>
+                  </div>
+                  
+                  <div style="padding:15px; background:rgba(99, 102, 241, 0.1); border-left:4px solid var(--primary); border-radius:8px;">
+                      <div style="font-size:12px; font-weight:bold; color:var(--primary); text-transform:uppercase;">🔥 Mayor Demanda Estimada</div>
+                      <div style="font-size:15px; color:var(--dark); margin-top:5px; line-height:1.4">
+                         <strong>${masDemanda.nombre}</strong> presenta alta rotación o alto valor por escasez en relación a su precio.
+                      </div>
+                  </div>
+              </div>
+            </div>
+        `;
+
+        setTimeout(() => {
+           let ctx = document.getElementById('stockChart');
+           if(ctx && window.stockChartInstance) window.stockChartInstance.destroy();
+           if(ctx) {
+              window.stockChartInstance = new Chart(ctx, {
+                  type: 'pie',
+                  data: {
+                      labels: chartNombres,
+                      datasets: [{
+                          label: 'Stock',
+                          data: chartCantidades,
+                          backgroundColor: [
+                              '#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', 
+                              '#8b5cf6', '#ef4444', '#14b8a6'
+                          ],
+                          borderWidth: 0,
+                          hoverOffset: 15
+                      }]
+                  },
+                  options: {
+                      responsive: true,
+                      plugins: {
+                          legend: { position: 'bottom', labels: { padding: 12, font: {size: 11} } }
+                      }
+                  }
+              });
+           }
+        }, 300);
+
+      } else if (contexto === "AGENDA") {
+        let sinCorreos = 0;
+        let colCorreo = columnas.find(c => c.Field.toLowerCase().includes("correo") || c.Field.toLowerCase().includes("email"))?.Field;
+        let gmailCount = 0;
+        let corpCount = 0;
+
+        if (colCorreo) {
+          datos.forEach(row => {
+             let mail = row[colCorreo] ? row[colCorreo].toLowerCase() : "";
+             if(!mail || !mail.includes("@")) sinCorreos++;
+             else if(mail.includes("gmail") || mail.includes("hotmail") || mail.includes("yahoo") || mail.includes("outlook")) gmailCount++;
+             else corpCount++;
+          });
+        }
+
+        let contactables = colCorreo ? (datos.length - sinCorreos) : datos.length;
+
+        cardsHtml += `
+            <div class="glass stat-card" style="border-left-color: var(--success);">
+              <div class="stat-label">🤖 IA MKT: Enfoque de tu Agenda</div>
+              <div class="stat-value" style="font-size:14px; margin-top:5px; line-height:1.4;">
+                ${corpCount > gmailCount ? 
+                `<strong>Perfil B2B (Empresarial):</strong> Dominan los dominios corporativos (${corpCount}).<br><em>Sugerencia:</em> Focaliza campañas en LinkedIn. El potencial de ticket promedio es mayor.` : 
+                `<strong>Perfil B2C (Consumo Masivo):</strong> Dominan dominios públicos (${gmailCount} de Gmail/Hotmail).<br><em>Sugerencia:</em> Usa integraciones directas por WhatsApp o SMS para mayor tasa de apertura.`}
+              </div>
+            </div>
+            
+            <div class="glass stat-card" style="border-left-color: var(--primary);">
+              <div class="stat-label">📊 Pronóstico de Crecimiento & Retención</div>
+              <div class="stat-value" style="font-size:14px; margin-top:5px; line-height:1.4;">
+                Con ${contactables} vías confirmadas, una campaña con tasa típica del 3% generaría <strong>~${Math.max(1, Math.round(contactables * 0.03))} interacciones reales</strong> hoy. Nutre las relaciones semanalmente.
+              </div>
+            </div>
+        `;
+        if (colCorreo && sinCorreos > 0) {
+          cardsHtml += `
+            <div class="glass stat-card" style="border-left-color: var(--danger);">
+              <div class="stat-label">💡 Agujero de Datos (Data Leak)</div>
+              <div class="stat-value" style="font-size:15px; margin-top:5px;">
+                Hay <strong>${sinCorreos}</strong> contactos sin email. Estás perdiendo el ${Math.round((sinCorreos/datos.length)*100)}% de tu audiencia digital.
+              </div>
+            </div>
+            `;
+        }
+
+      } else if (contexto === "FINANZAS") {
+        let subSuma = 0;
+        let colTotal = columnas.find(c => c.Field.toLowerCase().includes("total") || c.Field.toLowerCase().includes("monto") || c.Field.toLowerCase().includes("pago") || c.Field.toLowerCase().includes("ingreso"))?.Field;
+        if (colTotal) {
+          datos.forEach(row => subSuma += parseFloat(row[colTotal]) || 0);
+        }
+        cardsHtml += `
+            <div class="glass stat-card" style="border-left-color: var(--success);">
+              <div class="stat-label">📊 Pronóstico de Cierre Local</div>
+              <div class="stat-value" style="font-size:15px; margin-top:5px;">
+                El consolidado parcial identificado es <strong>$${subSuma.toFixed(2)}</strong>. Revisa los flujos de la última semana para proyectar el ROI mensual.
+              </div>
+            </div>
+        `;
+      } else {
+        // Genérico (la suma básica que teníamos + sugerencias de calidad)
+        let sumCol = columnas.find(c => (c.Type.includes("int") || c.Type.includes("decimal") || c.Type.includes("float")) && c.Key !== "PRI" && !c.Field.toLowerCase().includes("id"));
+        if (sumCol) {
+          let sum = datos.reduce((acc, row) => acc + (parseFloat(row[sumCol.Field]) || 0), 0);
+          let formatSum = sumCol.Type.includes("decimal") ? sum.toFixed(2) : sum;
+          cardsHtml += `
+            <div class="glass stat-card" style="border-left-color: var(--secondary);">
+               <div class="stat-label">📈 Pronóstico Cuantitativo Típico (${sumCol.Field})</div>
+               <div class="stat-value">${formatSum}</div>
+            </div>`;
+        }
+
+        let testCol = columnas.find(c => c.Key !== "PRI");
+        if (testCol) {
+          let field = testCol.Field;
+          let emtpyCount = datos.filter(row => row[field] === null || row[field] === "").length;
+          if (emtpyCount > 0) {
+            cardsHtml += `
+              <div class="glass stat-card" style="border-left-color: var(--danger);">
+                <div class="stat-label">💡 Alerta Algorítmica de Calidad</div>
+                <div class="stat-value" style="font-size:15px; margin-top:5px;">Se detectaron <strong>${emtpyCount}</strong> vacíos en el campo clave <em>${field}</em>. Complétalos para entrenar mejor al modelo.</div>
+              </div>`;
           }
         }
-      });
+      }
+
+      panel.innerHTML = cardsHtml;
     }
 
+    // ─── 5. MÓDULO IMPORTADOR DE EXCEL DINÁMICO ───
+    function handleDrop(e) {
+      e.preventDefault(); e.currentTarget.classList.remove('dragover');
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) procesarArchivo(e.dataTransfer.files[0]);
+    }
+    function handleFileSelect(e) {
+      if (e.target.files && e.target.files[0]) procesarArchivo(e.target.files[0]);
+    }
+
+    function procesarArchivo(file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        // Tomar la primera hoja
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Convertir a Array JSON incluyendo filas vacías inicialmente para leer cabeceras reales
+        excelRawData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+        if (excelRawData.length === 0) { mostrarMensaje("El Excel está vacío", "error"); return; }
+
+        abrirMapeoVisual();
+      };
+      reader.readAsArrayBuffer(file);
+      document.getElementById('file-input').value = ""; // reset
+    }
+
+    function abrirMapeoVisual() {
+      // Identificar Cabeceras del Excel
+      const excelHeaders = Object.keys(excelRawData[0]);
+
+      // Identificar Columnas Meta de la Base de Datos
+      const dbCols = DB_SCHEMA[activeTable].filter(c => !c.Extra.includes("auto_increment"));
+
+      // Construir la tabla de emparejamiento gráfico
+      const container = document.getElementById("mapping-container");
+      let html = "";
+
+      for (const exHead of excelHeaders) {
+        html += `<div class="map-row">
+          <div style="font-weight: 500; font-size:14px;">📄 ${exHead}</div>
+          <div>
+            <select id="map_${exHead}">
+               <option value="">-- Ignorar esta columna Excel --</option>
+               ${dbCols.map(c => {
+          // Pre-selección inteligente por coincidencia de nombre
+          let isMatch = exHead.toLowerCase() === c.Field.toLowerCase() ? 'selected' : '';
+          return `<option value="${c.Field}" ${isMatch}>💾 MySQL: ${c.Field}</option>`
+        }).join("")}
+            </select>
+          </div>
+        </div>`;
+      }
+      container.innerHTML = html;
+      document.getElementById("mapping-modal").style.display = "flex";
+    }
+
+    function cerrarModal() { document.getElementById("mapping-modal").style.display = "none"; }
+
+    async function procesarMapImportacion() {
+      const btn = document.getElementById("btn-import-mapped");
+      btn.textContent = "Procesando..."; btn.disabled = true;
+
+      // 1. Recolectar lo que eligió el usuario en los <select>
+      const excelHeaders = Object.keys(excelRawData[0]);
+      const mapa = {}; // mapping -> { "Nombre Producto Excel": "nombre_mysql" }
+      let mapeosValidos = 0;
+
+      for (const exHead of excelHeaders) {
+        const dbField = document.getElementById(`map_${exHead}`).value;
+        if (dbField !== "") {
+          mapa[exHead] = dbField;
+          mapeosValidos++;
+        }
+      }
+
+      if (mapeosValidos === 0) {
+        mostrarMensaje("No has emparejado ninguna columna para guardar.", "error");
+        btn.textContent = "Procesar e Importar"; btn.disabled = false;
+        return;
+      }
+
+      // 2. Traducir el excel crudo al JSON exacto que espera MySQL según el mapeo
+      const cleanDataToUpload = [];
+      const dbColsInfo = DB_SCHEMA[activeTable];
+
+      for (const rawRow of excelRawData) {
+        let cleanRow = {};
+        for (const exHead in mapa) {
+          const mySqlCol = mapa[exHead];
+          const struct = dbColsInfo.find(c => c.Field === mySqlCol);
+          let val = rawRow[exHead];
+
+          // Limpieza y Casteo según lo esperado en Base de Datos
+          if (struct) {
+            const tip = analizarTipoDato(struct.Type);
+            if (tip === "number") {
+              val = parseFloat(val);
+              if (isNaN(val)) val = 0; // fallback
+            } else {
+              val = String(val).trim();
+            }
+          }
+          cleanRow[mySqlCol] = val;
+        }
+        cleanDataToUpload.push(cleanRow);
+      }
+
+      // 3. Enviar a Backend Dinámico
+      try {
+        const res = await fetch(`${API}/importar_mapeado/${activeTable}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(cleanDataToUpload)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          mostrarMensaje(data.mensaje);
+          if (data.errores && data.errores.length > 0) {
+            console.warn("Hubieron errores guardando algunas filas:", data.errores);
+            setTimeout(() => mostrarMensaje(`Ignoradas ${data.errores.length} filas por error en datos`, "error"), 4000);
+          }
+          cerrarModal();
+          cargarDatosTablaActiva();
+        } else {
+          mostrarMensaje(data.error, "error");
+        }
+      } catch (e) {
+        mostrarMensaje("Error al subir los datos mapeados.", "error");
+      }
+
+      btn.textContent = "Procesar e Importar"; btn.disabled = false;
+    }
   </script>
 </body>
+
 </html>
