@@ -6,28 +6,23 @@ Uso: python app.py
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import mysql.connector
+import psycopg2
+import psycopg2.extras
 import openpyxl
 import os
 import random
+import psycopg2
 
 app = Flask(__name__, static_folder=".")
 CORS(app)
 
 # ── Configuración de base de datos (Dinámica) ─────────────────
-
-global_db_config = {
-    "host": os.getenv("DB_HOST", "localhost"),
-    "user": os.getenv("DB_USER","root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME", "pyme_db")
-}
-
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/pyme_db")
 def get_db():
-    """Retorna una nueva conexión a MySQL usando datos globales."""
+    """Retorna una nueva conexión a Postgres usando DATABASE_URL."""
     try:
-        return mysql.connector.connect(**global_db_config)
-    except mysql.connector.Error:
+        return psycopg2.connect(DATABASE_URL)
+    except psycopg2.Error:
         return None
 
 @app.route("/api/status", methods=["GET"])
