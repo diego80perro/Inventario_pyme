@@ -17,7 +17,10 @@ app = Flask(__name__, static_folder=".")
 CORS(app)
 
 # ── Configuración de base de datos (Dinámica) ─────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/pyme_db")
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("DATABASE_URL no está definida en las variables de entorno")
 def get_db():
     """Retorna una nueva conexión a Postgres usando DATABASE_URL."""
     try:
